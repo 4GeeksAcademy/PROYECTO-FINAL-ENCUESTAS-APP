@@ -1,5 +1,8 @@
-from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, jsonify, request, Blueprint, url_for
+from flask_admin import Admin, BaseView, expose
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 from datetime import datetime
 
 db = SQLAlchemy()
@@ -18,13 +21,11 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     # Relación con encuestas creadas
-    surveys = db.relationship('Survey', backref='surveys',  lazy=True) 
 
     # Relación con votos realizados
-    votes = db.relationship('Vote', backref='voter', lazy=True)  
 
     # Relación con invitaciones recibidas
-    invitations = db.relationship('Invitation', backref='invitee', lazy=True) 
+
 
     def __repr__(self):
         return f'<User {self.email}>'
@@ -51,15 +52,14 @@ class Survey(db.Model):
     status = db.Column(db.Enum('draft', 'active', 'closed', name='status'))
     type = db.Column(db.Enum('survey', 'poll', name='type'), nullable=False)
    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Relación con preguntas
-    questions = db.relationship('Question', backref='survey', lazy=True) 
+    usuaries = db.relationship('User')
+        # Relación con preguntas
 
     # Relación con votos
-    votes = db.relationship('Vote', backref='survey', lazy=True) 
+   
 
     # Relación con invitaciones
-    invitations = db.relationship('Invitation', backref='survey', lazy=True)
+   
 
     #def __repr__(self):
         #return f'<Survey {self.title}>'
@@ -87,11 +87,13 @@ class Question(db.Model):
     order = db.Column(db.Integer)
     required = db.Column(db.Boolean, default=True)
 
+    question_surveys = db.relationship('Survey')
+
     # Relación con opciones de respuesta
-    options = db.relationship('Option', backref='question', lazy=True)
+    #options = db.relationship('Option', backref='question', lazy=True)
 
     # Relación con votos
-    votes = db.relationship('Vote', backref='question', lazy=True)
+    #votes = db.relationship('Vote', backref='question', lazy=True)
 
     def __repr__(self):
         return f'<Question {self.question_text}>'
@@ -114,7 +116,7 @@ class Option(db.Model):
     order = db.Column(db.Integer)
 
     # Relación con votos
-    votes = db.relationship('Vote', backref='option', lazy=True)
+    option_questions = db.relationship('Question')
 
     def __repr__(self):
         return f'<Option {self.option_text}>'
@@ -130,11 +132,15 @@ class Option(db.Model):
 class Vote(db.Model):
     __tablename__ = 'votes'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    survey_id = db.Column(db.Integer, db.ForeignKey('surveys.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     question_id = db.Column(db.Integer, db.ForeignKey('questions.id'), nullable=False)
     option_id = db.Column(db.Integer, db.ForeignKey('options.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    votes_usuaries = db.relationship('User')
+    votes_questions = db.relationship('Question')
+    votes_options = db.relationship('Option')
+
 
     def __repr__(self):
         return f'<Vote by User {self.user_id} on Survey {self.survey_id}>'
@@ -159,6 +165,9 @@ class Invitation(db.Model):
     used = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    usuaries = db.relationship('User')
+    survies = db.relationship('Survey')
+
     def __repr__(self):
         return f'<Invitation {self.token} for Survey {self.survey_id}>'
 
@@ -172,3 +181,5 @@ class Invitation(db.Model):
             "used": self.used,
             "created_at": self.created_at.isoformat()
         }
+
+    
